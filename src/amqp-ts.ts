@@ -44,7 +44,6 @@ export class Connection {
   _connection: AmqpLib.Connection;
   _retry: number;
   _rebuilding: boolean = false;
-  _isClosing: boolean = false;
 
   _exchanges: { [id: string]: Exchange };
   _queues: { [id: string]: Queue };
@@ -70,7 +69,6 @@ export class Connection {
     }
     this._retry = -1;
     this._rebuilding = true;
-    this._isClosing = false;
 
     // rebuild the connection
     this.initialized = new Promise<void>((resolve, reject) => {
@@ -132,14 +130,7 @@ export class Connection {
           //connection.removeListener("end", restart); // not sure this is needed
           thisConnection._rebuildAll(err); //try to rebuild the topology when the connection  unexpectedly closes
         };
-        var onClose = () => {
-          connection.removeListener("close", onClose);
-          if (!this._isClosing) {
-            restart(new Error("Connection closed by remote host"));
-          }
-        };
         connection.on("error", restart);
-        connection.on("close", onClose);
         //connection.on("end", restart); // not sure this is needed
         thisConnection._connection = connection;
 
@@ -190,7 +181,6 @@ export class Connection {
   }
 
   close(): Promise<void> {
-    this._isClosing = true;
     return new Promise<void>((resolve, reject) => {
       this.initialized.then(() => {
         this._connection.close(err => {
